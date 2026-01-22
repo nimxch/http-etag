@@ -135,10 +135,10 @@ func Reset() {
 
 	fmt.Printf("Saved password.txt (size=%d bytes)\n", len(pw))
 
-	userName := "nimai.c@iqnext.io"
-	resetPasswordId := "6E696D61692E634069716E6578742E696F30353237"
+	userName := "<email@email.emai>"
+	resetPasswordId := "TEST_TEST_TEST"
 
-	apiURL := "https://faraday.iqnext.io/api/iqnext/admin/access/v1/nc/reset-password"
+	apiURL := "https://<Your Reset Password URL>"
 
 	// Paste the cookie header string (from browser/curl) ONLY if required.
 	// Otherwise leave empty.
