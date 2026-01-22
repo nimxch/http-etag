@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETag Browser Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .status-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .status-box.loading { background: #fff3cd; color: #856404; }
+        .status-box.updated { background: #d4edda; color: #155724; }
+        .status-box.not-modified { background: #d1ecf1; color: #0c5460; }
+        .status-box.error { background: #f8d7da; color: #721c24; }
+        
+        .response-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .response-box h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .response-content {
+            font-family: 'Courier New', monospace;
+            color: #212529;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .info-item.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .info-item strong {
+            display: block;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .info-item code {
+            word-break: break-all;
+            color: #667eea;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .stat-item .label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .stat-item304 { background: #17a2b8; }
+        .stat-item200 { background: #28a745; }
+        
+        .change-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .change-btn:hover { background: #5568d3; }
+        
+        .footer {
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>� Browser ETag Auto-Handling Demo</h1>
+        
+        <div id="status" class="status-box loading">
+            ⏳ Waiting for first poll...
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="value" id="pollCount">0</div>
+                <div class="label">Total Polls</div>
+            </div>
+            <div class="stat-item stat-item304">
+                <div class="value" id="notModifiedCount">0</div>
+                <div class="label">304 Not Modified</div>
+            </div>
+            <div class="stat-item stat-item200">
+                <div class="value" id="updatedCount">0</div>
+                <div class="label">200 Updated</div>
+            </div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <strong>HTTP Status</strong>
+                <code id="httpStatus">-</code>
+            </div>
+            <div class="info-item">
+                <strong>Current ETag</strong>
+                <code id="currentETag">-</code>
+            </div>
+            <div class="info-item full-width">
+                <strong>Last Request Headers</strong>
+                <code id="requestHeaders">-</code>
+            </div>
+            <div class="info-item full-width">
+                <strong>Last Response Headers</strong>
+                <code id="responseHeaders">-</code>
+            </div>
+        </div>
+        
+        <div class="response-box">
+            <h3>📦 Response Body</h3>
+            <div id="responseContent" class="response-content">
+                Waiting for response...
+            </div>
+        </div>
+        
+        <button class="change-btn" onclick="forceRefresh()">
+            🔄 Force Refresh (Clear Browser Cache)
+        </button>
+        
+        <div class="footer">
+            Polling every 10 seconds • Watch the browser automatically handle ETags
+        </div>
+    </div>
+    
+    <script>
+        let pollCount = 0;
+        let notModifiedCount = 0;
+        let updatedCount = 0;
+        let currentETag = null;
+        
+        const API_URL = 'http://localhost:8080/';
+        const POLL_INTERVAL = 10000;
+        
+        async function pollServer() {
+            pollCount++;
+            
+            const statusEl = document.getElementById('status');
+            const responseContentEl = document.getElementById('responseContent');
+            const httpStatusEl = document.getElementById('httpStatus');
+            const currentETagEl = document.getElementById('currentETag');
+            const requestHeadersEl = document.getElementById('requestHeaders');
+            const responseHeadersEl = document.getElementById('responseHeaders');
+            
+            statusEl.className = 'status-box loading';
+            statusEl.textContent = `⏳ Poll #${pollCount} - Fetching...`;
+            
+            // Build request headers
+            const headers = {};
+            if (currentETag) {
+                headers['If-None-Match'] = currentETag;
+            }
+            
+            // Store request headers for display
+            const requestHeaderStr = Object.entries(headers)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join('\n') || '(none)';
+            
+            console.log(`\n=== Poll #${pollCount} ===`);
+            console.log('Request headers:', headers);
+            
+            try {
+                const startTime = performance.now();
+                
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: headers
+                });
+                
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(0);
+                
+                // Store response headers for display
+                const responseHeaderStr = [];
+                response.headers.forEach((value, key) => {
+                    responseHeaderStr.push(`${key}: ${value}`);
+                });
+                
+                httpStatusEl.textContent = response.status;
+                requestHeadersEl.textContent = requestHeaderStr;
+                responseHeadersEl.textContent = responseHeaderStr.join('\n');
+                
+                if (response.status === 304) {
+                    // Browser automatically used cached data!
+                    notModifiedCount++;
+                    
+                    statusEl.className = 'status-box not-modified';
+                    statusEl.textContent = `✅ 304 Not Modified (Browser used cached data!)`;
+                    
+                    console.log(`📦 304 Not Modified - ETag: ${currentETag}`);
+                    console.log(`⚡ Response time: ${duration}ms (no body transferred)`);
+                    
+                } else if (response.ok) {
+                    // Full response - data changed
+                    const data = await response.json();
+                    currentETag = response.headers.get('ETag');
+                    updatedCount++;
+                    
+                    currentETagEl.textContent = currentETag;
+                    responseContentEl.textContent = JSON.stringify(data, null, 2);
+                    
+                    statusEl.className = 'status-box updated';
+                    statusEl.textContent = `✨ 200 OK - Data Updated!`;
+                    
+                    console.log(`📦 200 OK - New ETag: ${currentETag}`);
+                    console.log(`⚡ Response time: ${duration}ms`);
+                    console.log('Data:', data);
+                }
+                
+            } catch (error) {
+                statusEl.className = 'status-box error';
+                statusEl.textContent = `❌ Error: ${error.message}`;
+                console.error('Error:', error);
+            }
+            
+            // Update stats
+            document.getElementById('pollCount').textContent = pollCount;
+            document.getElementById('notModifiedCount').textContent = notModifiedCount;
+            document.getElementById('updatedCount').textContent = updatedCount;
+        }
+        
+        function forceRefresh() {
+            // Clear browser's cached ETag to force full refresh
+            currentETag = null;
+            console.log('\n🔄 Cache cleared - next poll will fetch fresh data');
+            pollServer();
+        }
+        
+        // Start polling
+        console.log('🚀 ETag Demo Started');
+        console.log(`📡 Polling ${API_URL} every ${POLL_INTERVAL/1000} seconds\n`);
+        
+        pollServer();
+        setInterval(pollServer, POLL_INTERVAL);
+    </script>
+</body>
+</html>
